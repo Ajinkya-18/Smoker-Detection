@@ -2,7 +2,7 @@ from  utils import get_inference_data, load_model
 
 inf_data = get_inference_data()
 
-model = load_model('models/')
+model = load_model('models/logistic_regression.joblib')
 
 y_hat = model.predict(inf_data)
 

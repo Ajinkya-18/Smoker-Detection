@@ -28,33 +28,51 @@ def load_data(data_path:str):
     
 #--------------------------------------------------------------------------------------------------------------
 
-def split_data(df, target:str):
+def split_data(df, target:str='smoking'):
     try:
+        X, Y = df.drop([target], axis=1), df[target].values.reshape(-1, 1)
+
         from sklearn.model_selection import train_test_split
+        x_train, y_train, x_val, y_val = train_test_split(X, Y, test_size=0.3, random_state=42)
 
-        X, Y = df.drop(['smoking'], axis=1), df['smoking'].values.reshape(-1, 1)
-        x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-        return x_train, x_test, y_train, y_test
+        return x_train, y_train, x_val, y_val
+    
     
     except Exception as e:
         raise e
     
 #-----------------------------------------------------------------------------------------------------------------
 
-def preprocess_data(df, target:str, mode:str='train'):
+def preprocess_data(df, target:str='smoking', mode:str='train'):
     try:
         df['BMI'] =  df['weight(kg)'] / (df['height(cm)']/100)**2
         df['WHtR'] = df['waist(cm)'] / df['height(cm)']
         df['eyesight'] = df['eyesight(left)'] + df['eyesight(right)'] / 2
-        df['hearing'] = df['hearing(left)'] + df['hearing(right)'] / 2
 
         df.drop(['weight(kg)', 'height(cm)', 'waist(cm)', 'eyesight(left)', 'eyesight(right)', 
-                     'hearing(left)', 'hearing(right)'], axis=1, inplace=True)
+                     'hearing(left)', 'hearing(right)'], 
+                     axis=1, inplace=True)
 
 
-        if mode=='test':
-            pass
+        if mode=='train':
+            from sklearn.preprocessing import QuantileTransformer
+            scaler = QuantileTransformer(random_state=42)
+            scaler.set_output(transform='pandas')
+
+            x_train, y_train, x_val, y_val = split_data(df, target=target)
+
+            x_train_scaled = scaler.fit_transform(x_train)
+            x_val_scaled = scaler.transform(x_val)
+
+            return x_train_scaled, x_val_scaled, y_train, y_val
+        
+
+        if mode=='inference':
+            scaler = load_model('models/quantile_transformer.joblib')
+            df_scaled = scaler.transform(df)
+
+            return df_scaled
+        
 
         else:
             raise ValueError('Invalid "mode" value passed.')
@@ -64,6 +82,20 @@ def preprocess_data(df, target:str, mode:str='train'):
         raise e
 
 #-----------------------------------------------------------------------------------------------------------------
+
+def get_best_features(best_features_path:str='models/best_features.joblib'):
+    try:
+        from joblib import load
+        with open(assert_path(best_features_path), 'rb') as f:
+            best_features = load(f)
+
+            return best_features
+        
+
+    except Exception as e:
+        raise e
+
+#----------------------------------------------------------------------------------------------------------------
 
 def save_model(model_object, save_path:str):
     try:
