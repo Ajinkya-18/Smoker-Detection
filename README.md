@@ -1,4 +1,4 @@
-🧠 Smoker Detection using Bio-signals
+# 🧠 Smoker Detection using Bio-signals
 This project addresses the binary classification task of identifying individuals as smokers or non-smokers based on routine health examination data. By integrating domain knowledge from biomedical sciences with machine learning and model interpretability tools, the goal is to uncover physiological markers most indicative of smoking behavior.
 
 ---
