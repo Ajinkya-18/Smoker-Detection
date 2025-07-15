@@ -3,9 +3,9 @@ def assert_path(path:str):
     from pathlib import Path
 
     cwd = os.getcwd()
-    full_path = os.path.join(cwd, Path(path))
+    full_path = Path(os.path.join(cwd, path))
 
-    if os.path.exists(full_path) and (full_path.endswith('.csv') or full_path.endswith('.joblib')):
+    if (os.path.exists(full_path) and (full_path.suffix=='.csv')) or full_path.suffix=='.joblib':
         return Path(full_path)
     
     else:
@@ -19,7 +19,7 @@ def load_data(data_path:str):
 
         import pandas as pd
 
-        df = pd.read_csv(full_data_path)
+        df = pd.read_csv(full_data_path, index_col='id')
 
         return df
     
@@ -30,12 +30,12 @@ def load_data(data_path:str):
 
 def split_data(df, target:str='smoking'):
     try:
-        X, Y = df.drop([target], axis=1), df[target].values.reshape(-1, 1)
+        X, Y = df.drop([target], axis=1), df[target]
 
         from sklearn.model_selection import train_test_split
-        x_train, y_train, x_val, y_val = train_test_split(X, Y, test_size=0.3, random_state=42)
+        x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=0.3, random_state=42)
 
-        return x_train, y_train, x_val, y_val
+        return x_train, x_val, y_train, y_val
     
     
     except Exception as e:
@@ -53,25 +53,37 @@ def preprocess_data(df, target:str='smoking', mode:str='train'):
                      'hearing(left)', 'hearing(right)'], 
                      axis=1, inplace=True)
 
+        print(df.shape)
+        
+        scaler = load_model('models/quantile_transformer.joblib')
+        selector = load_model('models/RFECV_fitted.joblib')
 
         if mode=='train':
-            from sklearn.preprocessing import QuantileTransformer
-            scaler = QuantileTransformer(random_state=42)
-            scaler.set_output(transform='pandas')
 
-            x_train, y_train, x_val, y_val = split_data(df, target=target)
+            x_train, x_val, y_train, y_val = split_data(df, target=target)
 
-            x_train_scaled = scaler.fit_transform(x_train)
+            x_train_scaled = scaler.transform(x_train)
             x_val_scaled = scaler.transform(x_val)
 
-            return x_train_scaled, x_val_scaled, y_train, y_val
+            x_train_scaled_best = selector.transform(x_train_scaled)
+            x_val_scaled_best = selector.transform(x_val_scaled)
+
+            return x_train_scaled_best, x_val_scaled_best, y_train, y_val
         
 
         if mode=='inference':
             scaler = load_model('models/quantile_transformer.joblib')
+            selector = load_model('models/RFECV_fitted.joblib')
+
             df_scaled = scaler.transform(df)
 
-            return df_scaled
+            df_scaled_best = selector.transform(df_scaled)
+
+            from random import choice
+            i = choice(range(0, len(df_scaled_best)))
+            # print(f'i: {i}')
+
+            return df_scaled_best.iloc[i, :].values.reshape(1, -1)
         
 
         else:
@@ -83,6 +95,7 @@ def preprocess_data(df, target:str='smoking', mode:str='train'):
 
 #-----------------------------------------------------------------------------------------------------------------
 
+# Use when best features are saved directly to a joblib file
 def get_best_features(best_features_path:str='models/best_features.joblib'):
     try:
         from joblib import load
@@ -122,9 +135,9 @@ def load_model(model_path:str):
         from joblib import load
         with open(full_model_path, 'rb') as f:
 
-            print('Loading model...')
+            # print('Loading model...')
             model = load(f)
-            print('Model loaded successfully!')
+            # print('Model loaded successfully!')
 
             return model
         
@@ -146,28 +159,25 @@ def train_model(model_instance, x_train, y_train):
     
 #------------------------------------------------------------------------------------------------------------------------
 
-def test_model(model_instance, x_test, y_test):
+def test_model(model_instance, x_test, y_test, metric:str='accuracy'):
     try:
         y_preds = model_instance.predict(x_test)
 
-        from sklearn.metrics import r2_score
-        score = r2_score(y_test, y_preds)
+        if metric=='accuracy':
+            from sklearn.metrics import accuracy_score
+            score = accuracy_score(y_test, y_preds)
 
-        return score
+            return score
+        
+        if metric=='f1_score':
+            from sklearn.metrics import f1_score
+            score = f1_score(y_true=y_test, y_pred=y_preds)
+
+            return score
+        
     
     except Exception as e:
         raise e
     
 #----------------------------------------------------------------------------------------------------------
-
-def get_inference_data():
-    from random import choice, uniform
-    import pandas as pd
-    
-    inf_data = {}
-
-    return pd.DataFrame.from_dict(inf_data)
-
-#----------------------------------------------------------------------------------------------------------
-
 
