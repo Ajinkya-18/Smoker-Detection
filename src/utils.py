@@ -45,16 +45,14 @@ def split_data(df, target:str='smoking'):
 
 def preprocess_data(df, target:str='smoking', mode:str='train'):
     try:
-        df['BMI'] =  df['weight(kg)'] / (df['height(cm)']/100)**2
-        df['WHtR'] = df['waist(cm)'] / df['height(cm)']
-        df['eyesight'] = df['eyesight(left)'] + df['eyesight(right)'] / 2
-
-        df.drop(['weight(kg)', 'height(cm)', 'waist(cm)', 'eyesight(left)', 'eyesight(right)', 
-                     'hearing(left)', 'hearing(right)'], 
-                     axis=1, inplace=True)
-
-
         if mode=='train':
+            df['BMI'] = df['weight(kg)'] / (df['height(cm)']/100)**2
+            df['WHtR'] = df['waist(cm)'] / df['height(cm)']
+            df['eyesight'] = df['eyesight(left)'] + df['eyesight(right)'] / 2
+
+            df.drop(['weight(kg)', 'height(cm)', 'waist(cm)', 'eyesight(left)', 
+                     'eyesight(right)', 'hearing(left)', 'hearing(right)'], 
+                     axis=1, inplace=True)
 
             x_train, x_val, y_train, y_val = split_data(df, target=target)
 
@@ -82,18 +80,25 @@ def preprocess_data(df, target:str='smoking', mode:str='train'):
             return x_train_scaled_best, x_val_scaled_best, y_train, y_val
         
 
-        if mode=='inference':
+        elif mode=='inference':
             scaler = load_model('models/quantile_transformer.joblib')
             selector = load_model('models/RFECV_fitted.joblib')
+            input_features = load_model('models/input_features.joblib').values.tolist()
+
+            df = df[input_features]
+
+            df['BMI'] = df['weight(kg)'] / (df['height(cm)']/100)**2
+            df['WHtR'] = df['waist(cm)'] / df['height(cm)']
+            df['eyesight'] = df['eyesight(left)'] + df['eyesight(right)'] / 2
+
+            df.drop(['weight(kg)', 'height(cm)', 'waist(cm)', 'eyesight(left)', 
+                     'eyesight(right)', 'hearing(left)', 'hearing(right)'], 
+                     axis=1, inplace=True)
 
             df_scaled = scaler.transform(df)
-
             df_scaled_best = selector.transform(df_scaled)
 
-            # from random import choice
-            # i = choice(range(0, len(df_scaled_best)))
-
-            return df_scaled_best #.iloc[i, :].values.reshape(1, -1)
+            return df_scaled_best 
         
 
         else:

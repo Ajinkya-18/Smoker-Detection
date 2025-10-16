@@ -4,6 +4,8 @@ import numpy as np
 import os
 import sys
 import joblib
+import warnings
+warnings.filterwarnings('ignore')
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -27,6 +29,7 @@ st.sidebar.header("Input Features")
 input_features = {}
 
 col1, col2, col3 = st.sidebar.columns(3)
+
 
 input_features['age'] = col1.number_input('Age', min_value=1, max_value=100, value=30)
 input_features['height(cm)'] = col1.number_input('Height (cm)', min_value=50, max_value=250, value=170)
@@ -68,7 +71,7 @@ if st.sidebar.button('Predict'):
     st.subheader("Prediction")
 
     if prediction[0] == 1:
-        st.warning("The model predicts: **Smoker**")
+        st.error("The model predicts: **Smoker**")
 
     else:
         st.success("The model predicts: **Non-Smoker**")
@@ -77,8 +80,5 @@ if st.sidebar.button('Predict'):
     st.subheader("Prediction Probablility")
     st.write(f"**Probability of being a smoker:** {prediction_proba[0][1]:.2f}")
     st.write(f"**Probability of being a non-smoker:** {prediction_proba[0][0]:.2f}")
-
-
-
 
 
