@@ -53,19 +53,30 @@ def preprocess_data(df, target:str='smoking', mode:str='train'):
                      'hearing(left)', 'hearing(right)'], 
                      axis=1, inplace=True)
 
-        print(df.shape)
-        
-        scaler = load_model('models/quantile_transformer.joblib')
-        selector = load_model('models/RFECV_fitted.joblib')
 
         if mode=='train':
 
             x_train, x_val, y_train, y_val = split_data(df, target=target)
 
-            x_train_scaled = scaler.transform(x_train)
+            from sklearn.preprocessing import QuantileTransformer
+            from sklearn.feature_selection import RFECV
+            from sklearn.tree import DecisionTreeClassifier
+            from sklearn.model_selection import StratifiedKFold
+
+            scaler = QuantileTransformer(random_state=42)
+
+            estimator_dtc = DecisionTreeClassifier(max_depth=15, min_samples_split=30, 
+                                                   min_samples_leaf=15, random_state=42)
+            
+            cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+
+            selector = RFECV(estimator=estimator_dtc, step=1, min_features_to_select=15, 
+                             cv=cv, scoring='f1', verbose=1, n_jobs=5, importance_getter='auto')
+
+            x_train_scaled = scaler.fit_transform(x_train)
             x_val_scaled = scaler.transform(x_val)
 
-            x_train_scaled_best = selector.transform(x_train_scaled)
+            x_train_scaled_best = selector.fit_transform(x_train_scaled)
             x_val_scaled_best = selector.transform(x_val_scaled)
 
             return x_train_scaled_best, x_val_scaled_best, y_train, y_val
@@ -79,11 +90,10 @@ def preprocess_data(df, target:str='smoking', mode:str='train'):
 
             df_scaled_best = selector.transform(df_scaled)
 
-            from random import choice
-            i = choice(range(0, len(df_scaled_best)))
-            # print(f'i: {i}')
+            # from random import choice
+            # i = choice(range(0, len(df_scaled_best)))
 
-            return df_scaled_best.iloc[i, :].values.reshape(1, -1)
+            return df_scaled_best #.iloc[i, :].values.reshape(1, -1)
         
 
         else:
@@ -180,4 +190,5 @@ def test_model(model_instance, x_test, y_test, metric:str='accuracy'):
         raise e
     
 #----------------------------------------------------------------------------------------------------------
+
 
